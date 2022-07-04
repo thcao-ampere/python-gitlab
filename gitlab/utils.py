@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union
 from urllib.parse import quote, urlparse
 
 import requests
@@ -54,6 +54,27 @@ def copy_dict(dest: Dict[str, Any], src: Dict[str, Any]) -> None:
                 dest["%s[%s]" % (k, dict_k)] = dict_v
         else:
             dest[k] = v
+
+class EncodedId(str):
+    """A custom `str` class that will return the URL-encoded value of the string.
+      * Using it recursively will only url-encode the value once.
+      * Can accept either `str` or `int` as input value.
+      * Can be used in an f-string and output the URL-encoded string.
+    Reference to documentation on why this is necessary.
+    See::
+        https://docs.gitlab.com/ee/api/index.html#namespaced-path-encoding
+        https://docs.gitlab.com/ee/api/index.html#path-parameters
+    """
+
+    def __new__(cls, value: Union[str, int, "EncodedId"]) -> "EncodedId":
+        if isinstance(value, EncodedId):
+            return value
+
+        if not isinstance(value, (int, str)):
+            raise TypeError(f"Unsupported type received: {type(value)}")
+        if isinstance(value, str):
+            value = quote(value, safe="")
+        return super().__new__(cls, value)
 
 
 def clean_str_id(id: str) -> str:
